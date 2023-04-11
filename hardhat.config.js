@@ -10,6 +10,7 @@ const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY;
 const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL;
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
+const NFT_STORAGE_KEY = process.env.NFT_STORAGE_KEY;
 
 module.exports = {
   defaultNetwork: 'hardhat',
@@ -28,11 +29,13 @@ module.exports = {
   solidity: {
     compilers: [
       {
-        version: '0.8.8',
+        version: '0.8.15',
       },
-      { version: '0.8.17' },
       {
-        version: '0.6.6',
+        version: '0.6.0',
+      },
+      {
+        version: '0.8.0',
       },
     ],
   },
@@ -43,7 +46,7 @@ module.exports = {
     enabled: true,
     currency: 'USD',
     outputFile: 'gas-report.txt',
-    noColors: true,
+    noColors: false,
     // coinmarketcap: COINMARKETCAP_API_KEY,
   },
   namedAccounts: {
