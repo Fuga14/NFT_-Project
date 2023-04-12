@@ -1,8 +1,10 @@
 const { network, ethers } = require('hardhat');
-const { developmentChains } = require('../hepler-hardhat-config');
+const {
+  developmentChains,
+  networkConfig,
+} = require('../hepler-hardhat-config');
 const { verify } = require('../utils/verify');
 const { storeNFTs } = require('../utils/uploadToNftStorage');
-const { networkConfig } = require('../hepler-hardhat-config');
 
 // address vrfCoordinatorV2,
 // uint64 subscriptionId,
@@ -10,34 +12,41 @@ const { networkConfig } = require('../hepler-hardhat-config');
 // uint256 mintFee,
 // uint32 callbackGasLimit,
 // string[3] memory dogTokenURIs
-let tokenURIs = [];
+const FUND_AMOUNT = '1000000000000000000000';
 const imageLocation = './images/randomNFT/';
-const metadataTemplate = {
-  name: '',
-  description: '',
-  image: '',
-  attributes: [{ trait_type: 'Cuteness', value: 100 }],
-};
+let tokenURIs = [
+  'ipfs://bafyreihrw6j6elshreeazher5ofjum7rpst3wghxspabijmw7qrdbujava/metadata.json',
+  'ipfs://bafyreiem3ixo4rw5l6l3rjt2kymblvufeiu3yrc5gbxk734imubwtyjdbq/metadata.json',
+  'ipfs://bafyreidiyt4zvc3ysxlfk7gb3s7c457lkuy2cmsuntc54hakpdwdk5icd4/metadata.json',
+];
+// const metadataTemplate = {
+//   name: '',
+//   description: '',
+//   image: '',
+//   attributes: [{ trait_type: 'Cuteness', value: 100 }],
+// };
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
   const chainId = network.config.chainId;
 
-  // getting IPFS hashes of our images
-
-  let vrfCoordinatorV2Address, subscriptionId;
+  let vrfCoordinatorV2Address, subscriptionId, vrfCoordinatorV2Mock;
 
   if (process.env.UPLOAD_TO_NFT_STORAGE == 'true') {
     tokenURIs = await handleTokenURIs();
+    console.log(tokenURIs);
   }
-  console.log(tokenURIs);
-  if (developmentChains.includes(network.name)) {
-    const vrfCoordinatorV2 = await ethers.getContract('VRFCoordinatorV2Mock');
-    vrfCoordinatorV2Address = vrfCoordinatorV2.address;
-    const tx = await vrfCoordinatorV2.createSubscription();
-    const txReceipt = await tx.wait(1);
+
+  if (chainId == 31337) {
+    //Creating vrfv2 subscription
+    vrfCoordinatorV2Mock = await ethers.getContract('VRFCoordinatorV2Mock');
+    vrfCoordinatorV2Address = vrfCoordinatorV2Mock.address;
+    const tx = await vrfCoordinatorV2Mock.createSubscription();
+    const txReceipt = await tx.wait();
     subscriptionId = txReceipt.events[0].args.subId;
+    // Fund the subscription
+    await vrfCoordinatorV2Mock.fundSubscription(subscriptionId, FUND_AMOUNT);
   } else {
     vrfCoordinatorV2Address = networkConfig[chainId][vrfCoordinatorV2];
     subscriptionId = networkConfig[chainId][subscriptionId];
@@ -49,16 +58,30 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     subscriptionId,
     networkConfig[chainId]['gasLane'], // gaseLane
     networkConfig[chainId]['mintFee'], // mintFee
-    networkConfig[chainId]['callBackGasLimit'], // callBackGasLimit
-    '', // dogTokenURIs
+    networkConfig[chainId]['callbackGasLimit'], // callBackGasLimit
+    tokenURIs, // dogTokenURIs
   ];
+
+  const randomIpfsNft = await deploy('RandomIpfsNft', {
+    from: deployer,
+    log: true,
+    args: args,
+    waitConfirmation: network.config.blockConfirmations || 1,
+  });
+  log('---------------------------------');
+  log('Contract successfuly deployed');
+
+  if (!developmentChains.includes(network.name)) {
+    verify(randomIpfsNft.address, args);
+  }
 };
 
 async function handleTokenURIs() {
   const imageUploadResponse = await storeNFTs(imageLocation);
   console.log(imageUploadResponse);
   for (imageUploadResponseIndex in imageUploadResponse) {
-    url = imageUploadResponse[imageUploadResponseIndex].url;
+    const ipnft = `ipfs://${imageUploadResponse[imageUploadResponseIndex].ipnft}`;
+    const url = imageUploadResponse[imageUploadResponseIndex].url;
     tokenURIs.push(url);
   }
   // console.log(tokenURIs);
