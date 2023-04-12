@@ -80,7 +80,7 @@ async function handleTokenURIs() {
   const imageUploadResponse = await storeNFTs(imageLocation);
   console.log(imageUploadResponse);
   for (imageUploadResponseIndex in imageUploadResponse) {
-    const ipnft = `ipfs://${imageUploadResponse[imageUploadResponseIndex].ipnft}`;
+    // const ipnft = `ipfs://${imageUploadResponse[imageUploadResponseIndex].ipnft}`;
     const url = imageUploadResponse[imageUploadResponseIndex].url;
     tokenURIs.push(url);
   }
